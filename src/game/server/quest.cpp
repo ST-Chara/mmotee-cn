@@ -288,7 +288,7 @@ void CQuestManager::ShowMainQuestMenu(int ClientID, CGameContext *pGameServer)
 	// 标题 + 描述
 	pGameServer->AddVote_Localization(ClientID, "null", pStep->m_LocaleTitle);
 	for (int i = 0; i < 5; i++)
-		if (pStep->m_LocaleDescLines[i][0])
+		if (pStep->m_LocaleDescLines[i] && pStep->m_LocaleDescLines[i][0])
 			pGameServer->AddVote_Localization(ClientID, "null", pStep->m_LocaleDescLines[i]);
 
 	// 需求物品 (支持 1 或 2 种)
@@ -619,9 +619,10 @@ void CQuestManager::ShowDailyCollectSection(int ClientID, int SubType,
 
 	// 子类型选单（隐藏支线: 0.5% 概率食品 → "食品...?"）
 	pGameServer->AddVote_Localization(ClientID, "sque0", "- 农业经济");
+	bool bHidden = random_prob(kHiddenOfferingProb);
 	pGameServer->AddVote_Localization(ClientID,
-		random_prob(kHiddenOfferingProb) ? "sque2" : "sque1",
-		random_prob(kHiddenOfferingProb) ? "- 食品...?" : "- 食品");
+		bHidden ? "sque2" : "sque1",
+		bHidden ? "- 食品...?" : "- 食品");
 	pGameServer->AddVote_Localization(ClientID, "sque3", "- 矿业经济");
 	pGameServer->AddVote("", "null", ClientID);
 
