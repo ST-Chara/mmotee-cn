@@ -1,4 +1,4 @@
-/* Quest & DailyQuest System - Implementation */
+// 任务系统 - 主线任务 & 每日任务 实现
 #include <engine/server.h>
 #include <engine/shared/config.h>
 #include <game/server/player.h>
@@ -6,308 +6,271 @@
 #include "quest.h"
 #include <ctime>
 
-// ============================================================
-// 主线任务 静态数据表
-// ============================================================
+// =====================================================================
+// 主线任务 - 静态数据表
+// =====================================================================
 
 const SMQuestStepDef CQuestManager::ms_aMainQuestSteps[] =
 {
+	// QUEST1 ─ 收集干净的猪肉 (20)
 	{
-		/* QuestID     */ EMainQuests::QUEST1_PIGGY1,
-		/* TitleKey    */ "第一阶仪式 I",
-		/* DescLines   */ {
-			"我需要一些没有被污染的猪肉..",
-			"那些猪大多被污染了，你或许需要多杀一些。",
-		},
-		/* Requirements */ {
-			{ PIGPORNO, EMainQuestNeed::QUEST1 },  // 20
-			{ 0, 0 },
-		},
-		/* ExpReward   */ 4000,
-		/* MoneyReward */ 200000,
-		/* UpPointReward */ 0,
-		/* MailItems   */ { { 0, 2 }, { 0, 2 } },
+		EMainQuests::QUEST1_PIGGY1,
+		"第一阶仪式 I",
+		{ "我需要一些没有被污染的猪肉..",
+		  "那些猪大多被污染了，你或许需要多杀一些。" },
+		{ { PIGPORNO, EMainQuestNeed::QUEST1 }, { 0, 0 } },
+		/* Exp */ 4000, /* Money */ 200000, /* UpPg */ 0,
+		{ { 0, 2 }, { 0, 2 } },
 	},
+	// QUEST2 ─ 更多的干净猪肉 (40)
 	{
-		/* QuestID     */ EMainQuests::QUEST2_PIGGY2,
-		/* TitleKey    */ "第一阶仪式 II",
-		/* DescLines   */ {
-			"我估错了所需的数量",
-			"我还需要更多的干净猪肉",
-		},
-		/* Requirements */ {
-			{ PIGPORNO, EMainQuestNeed::QUEST2 },  // 40
-			{ 0, 0 },
-		},
-		/* ExpReward   */ 4000,
-		/* MoneyReward */ 250000,
-		/* UpPointReward */ 0,
-		/* MailItems   */ { { 0, 2 }, { 0, 2 } },
+		EMainQuests::QUEST2_PIGGY2,
+		"第一阶仪式 II",
+		{ "我估错了所需的数量",
+		  "我还需要更多的干净猪肉" },
+		{ { PIGPORNO, EMainQuestNeed::QUEST2 }, { 0, 0 } },
+		/* Exp */ 4000, /* Money */ 250000, /* UpPg */ 0,
+		{ { 0, 2 }, { 0, 2 } },
 	},
+	// QUEST3 ─ Kwah 的头 (60)
 	{
-		/* QuestID     */ EMainQuests::QUEST3_KWAH1,
-		/* TitleKey    */ "第一阶仪式 III",
-		/* DescLines   */ {
-			"猪肉已经不足以满足祂了",
-			"我需要Kwah的头，尚未被污染的",
-		},
-		/* Requirements */ {
-			{ KWAHGANDON, EMainQuestNeed::QUEST3 },  // 60
-			{ 0, 0 },
-		},
-		/* ExpReward   */ 8000,
-		/* MoneyReward */ 500000,
-		/* UpPointReward */ 0,
-		/* MailItems   */ { { 0, 2 }, { 0, 2 } },
+		EMainQuests::QUEST3_KWAH1,
+		"第一阶仪式 III",
+		{ "猪肉已经不足以满足祂了",
+		  "我需要Kwah的头，尚未被污染的" },
+		{ { KWAHGANDON, EMainQuestNeed::QUEST3 }, { 0, 0 } },
+		/* Exp */ 8000, /* Money */ 500000, /* UpPg */ 0,
+		{ { 0, 2 }, { 0, 2 } },
 	},
+	// QUEST4 ─ 更多 Kwah 的头 (80)
 	{
-		/* QuestID     */ EMainQuests::QUEST4_KWAH2,
-		/* TitleKey    */ "第一阶仪式 IV",
-		/* DescLines   */ {
-			"Kwah的头效果很好",
-			"祂还需要更多",
-		},
-		/* Requirements */ {
-			{ KWAHGANDON, EMainQuestNeed::QUEST4 },  // 80
-			{ 0, 0 },
-		},
-		/* ExpReward   */ 8000,
-		/* MoneyReward */ 550000,
-		/* UpPointReward */ 0,
-		/* MailItems   */ { { 0, 2 }, { 0, 2 } },
+		EMainQuests::QUEST4_KWAH2,
+		"第一阶仪式 IV",
+		{ "Kwah的头效果很好",
+		  "祂还需要更多" },
+		{ { KWAHGANDON, EMainQuestNeed::QUEST4 }, { 0, 0 } },
+		/* Exp */ 8000, /* Money */ 550000, /* UpPg */ 0,
+		{ { 0, 2 }, { 0, 2 } },
 	},
+	// QUEST5 ─ 猪 × Kwah 混合仪式 (100 + 60)
 	{
-		/* QuestID     */ EMainQuests::QUEST5_PIGGYNKWAHSTEP1,
-		/* TitleKey    */ "登阶 [第一步]",
-		/* DescLines   */ {
-			"成功了！哈哈哈哈哈！",
-			"现在..我们可以...",
-			" ",
-			"更进一步",
-			" ",
-		},
-		/* Requirements */ {
-			{ KWAHGANDON, EMainQuestNeed::QUEST5 },  // 100
-			{ PIGPORNO, EMainQuestNeed::QUEST3  },  // 60 (原有bug: 检查用QUEST3，扣除用QUEST5)
-		},
-		/* ExpReward   */ 0,
-		/* MoneyReward */ 1000000,
-		/* UpPointReward */ 0,
-		/* MailItems   */ { { EARRINGSKWAH, 2 }, { 0, 2 } },
+		EMainQuests::QUEST5_PIGGYNKWAHSTEP1,
+		"登阶 [第一步]",
+		{ "成功了！哈哈哈哈哈！",
+		  "现在..我们可以...",
+		  " ", "更进一步", " " },
+		{ { KWAHGANDON, EMainQuestNeed::QUEST5 },
+		  { PIGPORNO,   EMainQuestNeed::QUEST3 } },
+		/* Exp */ 0, /* Money */ 1000000, /* UpPg */ 0,
+		{ { EARRINGSKWAH, 2 }, { 0, 2 } },
 	},
+	// QUEST6 ─ Kwah 头 + 脚 (120 + 120)
 	{
-		/* QuestID     */ EMainQuests::QUEST6_KWAHSTEP1,
-		/* TitleKey    */ "登阶 [第二步]",
-		/* DescLines   */ {
-			"我看见祂了!",
-			"我看见祂了!!!",
-			"啊啊啊啊啊啊啊啊啊",
-			"更多！更多！！",
-		},
-		/* Requirements */ {
-			{ KWAHGANDON, EMainQuestNeed::QUEST6 },  // 120
-			{ FOOTKWAH, EMainQuestNeed::QUEST6 },    // 120
-		},
-		/* ExpReward   */ 0,
-		/* MoneyReward */ 1050000,
-		/* UpPointReward */ 0,
-		/* MailItems   */ { { FORMULAWEAPON, 2 }, { TITLEQUESTS, 3 } },
+		EMainQuests::QUEST6_KWAHSTEP1,
+		"登阶 [第二步]",
+		{ "我看见祂了!",
+		  "我看见祂了!!!",
+		  "啊啊啊啊啊啊啊啊啊",
+		  "更多！更多！！" },
+		{ { KWAHGANDON, EMainQuestNeed::QUEST6 },
+		  { FOOTKWAH,   EMainQuestNeed::QUEST6 } },
+		/* Exp */ 0, /* Money */ 1050000, /* UpPg */ 0,
+		{ { FORMULAWEAPON, 2 }, { TITLEQUESTS, 3 } },
 	},
+	// QUEST7 ─ 守卫头 (10)
 	{
-		/* QuestID     */ EMainQuests::QUEST7_BADGUARD,
-		/* TitleKey    */ "第二阶仪式 I",
-		/* DescLines   */ {
-			"VVDieevruiumtm 5 5 4",
-		},
-		/* Requirements */ {
-			{ GUARDHEAD, EMainQuestNeed::QUEST7 },  // 10
-			{ 0, 0 },
-		},
-		/* ExpReward   */ 0,
-		/* MoneyReward */ 5550000,
-		/* UpPointReward */ 0,
-		/* MailItems   */ { { TITLEGUARD, 2 }, { 0, 2 } },
+		EMainQuests::QUEST7_BADGUARD,
+		"第二阶仪式 I",
+		{ "VVDieevruiumtm 5 5 4" },
+		{ { GUARDHEAD, EMainQuestNeed::QUEST7 }, { 0, 0 } },
+		/* Exp */ 0, /* Money */ 5550000, /* UpPg */ 0,
+		{ { TITLEGUARD, 2 }, { 0, 2 } },
 	},
+	// QUEST8 ─ 僵尸脑 (50)
 	{
-		/* QuestID     */ EMainQuests::QUEST8_ZOMBIE,
-		/* TitleKey    */ "第二阶仪式 II",
-		/* DescLines   */ {
-			"神说: 要有ω☪′▶",
-			"神说: 要有ω☪′▶",
-			"神说: 要有ω☪′▶",
-		},
-		/* Requirements */ {
-			{ ZOMBIEBRAIN, EMainQuestNeed::QUEST8 },  // 50
-			{ 0, 0 },
-		},
-		/* ExpReward   */ 0,
-		/* MoneyReward */ 0,
-		/* UpPointReward */ 500,
-		/* MailItems   */ { { 0, 2 }, { 0, 2 } },
+		EMainQuests::QUEST8_ZOMBIE,
+		"第二阶仪式 II",
+		{ "神说: 要有ω☪′▶",
+		  "神说: 要有ω☪′▶",
+		  "神说: 要有ω☪′▶" },
+		{ { ZOMBIEBRAIN, EMainQuestNeed::QUEST8 }, { 0, 0 } },
+		/* Exp */ 0, /* Money */ 0, /* UpPg */ 500,
+		{ { 0, 2 }, { 0, 2 } },
 	},
+	// QUEST9 ─ 骷髅头骨 (50)
 	{
-		/* QuestID     */ EMainQuests::QUEST8_SKELET,
-		/* TitleKey    */ "第二阶仪式 III",
-		/* DescLines   */ {
-			"神说: 于是，便有了Lmg",
-			"神说: 于是，便有了aiå",
-			"神说: 于是，便有了dg",
-		},
-		/* Requirements */ {
-			{ SKELETSKULL, EMainQuestNeed::QUEST9 },  // 50
-			{ 0, 0 },
-		},
-		/* ExpReward   */ 0,
-		/* MoneyReward */ 0,
-		/* UpPointReward */ 3000,
-		/* MailItems   */ { { 0, 2 }, { 0, 2 } },
+		EMainQuests::QUEST8_SKELET,
+		"第二阶仪式 III",
+		{ "神说: 于是，便有了Lmg",
+		  "神说: 于是，便有了aiå",
+		  "神说: 于是，便有了dg" },
+		{ { SKELETSKULL, EMainQuestNeed::QUEST9 }, { 0, 0 } },
+		/* Exp */ 0, /* Money */ 0, /* UpPg */ 3000,
+		{ { 0, 2 }, { 0, 2 } },
 	},
 };
-const int CQuestManager::ms_NumMainQuestSteps = sizeof(ms_aMainQuestSteps) / sizeof(ms_aMainQuestSteps[0]);
+const int CQuestManager::ms_NumMainQuestSteps =
+	sizeof(ms_aMainQuestSteps) / sizeof(ms_aMainQuestSteps[0]);
 
-// ============================================================
-// 每日任务 静态物品池
-// ============================================================
+// =====================================================================
+// 每日任务 - 物品池
+// =====================================================================
 
-const int CQuestManager::ms_aCollectFarmItems[] = { POTATO, TOMATE, CARROT, CABBAGE };
-const int CQuestManager::ms_aCollectFoodItems[] = { PIGPORNO, KWAHGANDON, HEADBOOMER, FOOTKWAH };
+const int CQuestManager::ms_aCollectFarmItems[]     = { POTATO, TOMATE, CARROT, CABBAGE };
+const int CQuestManager::ms_aCollectFoodItems[]     = { PIGPORNO, KWAHGANDON, HEADBOOMER, FOOTKWAH };
 const int CQuestManager::ms_aCollectOfferingItems[] = { DIRTYPIG, DIRTYKWAHHEAD, DIRTYBOOMERBODY, DIRTYKWAHFEET, DIRTYGUARDHEAD, GUARDHEAD };
-const int CQuestManager::ms_aCollectMiningItems[] = { COOPERORE, IRONORE, GOLDORE, DIAMONDORE, DRAGONORE, IRON, STANNUM };
-const int CQuestManager::ms_aKillItems[] = { BOT_L1MONSTER, BOT_L2MONSTER, BOT_L3MONSTER, BOT_BOSSSLIME, BOT_BOSSPIGKING, BOT_BOSSVAMPIRE, BOT_BOSSGUARD };
-const int CQuestManager::ms_aChallengeFarmItems[] = { POTATO, TOMATE, CARROT, CABBAGE };
+const int CQuestManager::ms_aCollectMiningItems[]   = { COOPERORE, IRONORE, GOLDORE, DIAMONDORE, DRAGONORE, IRON, STANNUM };
+const int CQuestManager::ms_aKillItems[]            = { BOT_L1MONSTER, BOT_L2MONSTER, BOT_L3MONSTER, BOT_BOSSSLIME, BOT_BOSSPIGKING, BOT_BOSSVAMPIRE, BOT_BOSSGUARD };
+const int CQuestManager::ms_aChallengeFarmItems[]   = { POTATO, TOMATE, CARROT, CABBAGE };
 const int CQuestManager::ms_aChallengeOfferingItems[] = { PIGPORNO, KWAHGANDON, HEADBOOMER, FOOTKWAH, DIRTYPIG, DIRTYKWAHHEAD, DIRTYBOOMERBODY, DIRTYKWAHFEET, DIRTYGUARDHEAD, GUARDHEAD };
 const int CQuestManager::ms_aChallengeMiningItems[] = { COOPERORE, IRONORE, GOLDORE, DIAMONDORE, DRAGONORE, IRON, STANNUM };
-const int CQuestManager::ms_aChallengeKillItems[] = { BOT_L1MONSTER, BOT_L2MONSTER, BOT_L3MONSTER, BOT_BOSSSLIME, BOT_BOSSPIGKING, BOT_BOSSVAMPIRE, BOT_BOSSGUARD, BOT_BOSSZOMBIE, BOT_BOSSSKELET };
+const int CQuestManager::ms_aChallengeKillItems[]   = { BOT_L1MONSTER, BOT_L2MONSTER, BOT_L3MONSTER, BOT_BOSSSLIME, BOT_BOSSPIGKING, BOT_BOSSVAMPIRE, BOT_BOSSGUARD, BOT_BOSSZOMBIE, BOT_BOSSSKELET };
 
-// ============================================================
-// 每日任务 子类型定义表
-// ============================================================
+// =====================================================================
+// 每日任务 - 子类型配置表
+// =====================================================================
 
 const SDailySubTypeDef CQuestManager::ms_aDailySubTypes[] =
 {
-	// 收集任务 (DAILY_COLLECT)
-	{ DAILY_COLLECT, DAILYSUB_COLLECT_FARM,     { ms_aCollectFarmItems,     4 }, "农业经济" },
-	{ DAILY_COLLECT, DAILYSUB_COLLECT_FOOD,     { ms_aCollectFoodItems,     4 }, "食品"     },
-	{ DAILY_COLLECT, DAILYSUB_COLLECT_OFFERING, { ms_aCollectOfferingItems, 6 }, "祭品"     },
-	{ DAILY_COLLECT, DAILYSUB_COLLECT_MINING,   { ms_aCollectMiningItems,   7 }, "矿业经济" },
-
-	// 击杀任务 (DAILY_KILL) - 只有一个子类型
-	{ DAILY_KILL,    0, { ms_aKillItems, 7 }, "击杀任务" },
-
-	// 挑战任务 (DAILY_CHALLENGE)
-	{ DAILY_CHALLENGE, DAILYSUB_CHALLENGE_FARM,     { ms_aChallengeFarmItems,      4 }, "农业经济" },
-	{ DAILY_CHALLENGE, DAILYSUB_CHALLENGE_OFFERING, { ms_aChallengeOfferingItems, 10 }, "祭品"     },
-	{ DAILY_CHALLENGE, DAILYSUB_CHALLENGE_MINING,   { ms_aChallengeMiningItems,    7 }, "矿业经济" },
-	{ DAILY_CHALLENGE, DAILYSUB_CHALLENGE_KILL,     { ms_aChallengeKillItems,      9 }, "击杀挑战" },
+	// ── 收集任务 ──
+	{ kDailyCollect, kDailyCollectFarm,      { ms_aCollectFarmItems,      4 }, "农业经济" },
+	{ kDailyCollect, kDailyCollectFood,      { ms_aCollectFoodItems,      4 }, "食品"     },
+	{ kDailyCollect, kDailyCollectOffering,  { ms_aCollectOfferingItems,  6 }, "祭品"     },
+	{ kDailyCollect, kDailyCollectMining,    { ms_aCollectMiningItems,    7 }, "矿业经济" },
+	// ── 击杀任务（单分支）──
+	{ kDailyKill,    kDailyKillDefault,      { ms_aKillItems, 7 },             "击杀任务" },
+	// ── 挑战任务 ──
+	{ kDailyChallenge, kDailyChallengeFarm,     { ms_aChallengeFarmItems,      4 }, "农业经济" },
+	{ kDailyChallenge, kDailyChallengeOffering, { ms_aChallengeOfferingItems, 10 }, "祭品"     },
+	{ kDailyChallenge, kDailyChallengeMining,   { ms_aChallengeMiningItems,    7 }, "矿业经济" },
+	{ kDailyChallenge, kDailyChallengeKill,     { ms_aChallengeKillItems,      9 }, "击杀挑战" },
 };
-const int CQuestManager::ms_NumDailySubTypes = sizeof(ms_aDailySubTypes) / sizeof(ms_aDailySubTypes[0]);
+const int CQuestManager::ms_NumDailySubTypes =
+	sizeof(ms_aDailySubTypes) / sizeof(ms_aDailySubTypes[0]);
 
-// ============================================================
-// CQuestManager 实现
-// ============================================================
+// =====================================================================
+// 内部辅助 ─ 查找子类型配置 & 追踪物品映射
+// =====================================================================
 
-void CQuestManager::Init() {}  // 初始化（目前不需要特殊操作）
-
-// ---- 主线任务: 获取当前步骤定义 ----
-int CQuestManager::GetMainQuestProgress(int QuestID) const
+const SDailySubTypeDef *CQuestManager::FindDailySubType(int Type, int SubType) const
 {
-	return QuestID - EMainQuests::QUEST1_PIGGY1;
+	for (int i = 0; i < ms_NumDailySubTypes; i++)
+		if (ms_aDailySubTypes[i].m_Type == Type
+		 && ms_aDailySubTypes[i].m_SubType == SubType)
+			return &ms_aDailySubTypes[i];
+	return 0;
 }
 
-const SMQuestStepDef *CQuestManager::GetCurrentMainQuestStep(int ClientID, CGameContext *pGameServer) const
+int CQuestManager::TrackingItemForType(int Type)
 {
-	int QuestID = pGameServer->m_apPlayers[ClientID]->AccData()->m_Quest;
-	for (int i = 0; i < ms_NumMainQuestSteps; i++)
+	switch (Type)
 	{
-		if (ms_aMainQuestSteps[i].m_QuestID == QuestID)
-			return &ms_aMainQuestSteps[i];
+	case kDailyCollect:   return COLLECTQUEST;
+	case kDailyKill:      return KILLQUEST;
+	case kDailyChallenge: return CHALLENGEQUEST;
 	}
 	return 0;
 }
 
-// ---- 主线任务: 检查是否可完成 ----
+// =====================================================================
+// 主线任务 ─ 获取当前步骤 / 检查完成条件 / 完成 & 推进
+// =====================================================================
+
+const SMQuestStepDef *CQuestManager::GetCurrentMainQuestStep(
+	int ClientID, CGameContext *pGameServer) const
+{
+	int QuestID = pGameServer->m_apPlayers[ClientID]->AccData()->m_Quest;
+	for (int i = 0; i < ms_NumMainQuestSteps; i++)
+		if (ms_aMainQuestSteps[i].m_QuestID == QuestID)
+			return &ms_aMainQuestSteps[i];
+	return 0;
+}
+
 bool CQuestManager::CanCompleteMainQuest(int ClientID, CGameContext *pGameServer) const
 {
 	const SMQuestStepDef *pStep = GetCurrentMainQuestStep(ClientID, pGameServer);
-	if (!pStep)
-		return false;
+	if (!pStep) return false;
 
 	for (int i = 0; i < 2; i++)
 	{
-		if (pStep->m_Requirements[i].m_ItemID != 0)
-		{
-			if (static_cast<unsigned long long>(pGameServer->Server()->GetItemCount(ClientID, pStep->m_Requirements[i].m_ItemID))
-				< static_cast<unsigned long long>(pStep->m_Requirements[i].m_NeedCount))
-				return false;
-		}
+		int ItemID = pStep->m_Requirements[i].m_ItemID;
+		if (ItemID == 0) continue;
+		if (pGameServer->Server()->GetItemCount(ClientID, ItemID)
+		 < (unsigned long long)pStep->m_Requirements[i].m_NeedCount)
+			return false;
 	}
 	return true;
 }
 
-// ---- 主线任务: 完成并推进 ----
 void CQuestManager::CompleteMainQuest(int ClientID, CGameContext *pGameServer)
 {
 	const SMQuestStepDef *pStep = GetCurrentMainQuestStep(ClientID, pGameServer);
-	if (!pStep)
-		return;
+	if (!pStep) return;
 
-	// 扣除需求物品
+	// 1) 扣除需求物品
 	for (int i = 0; i < 2; i++)
 	{
-		if (pStep->m_Requirements[i].m_ItemID != 0)
-		{
-			pGameServer->Server()->RemItem(ClientID,
-				pStep->m_Requirements[i].m_ItemID,
-				pStep->m_Requirements[i].m_NeedCount, -1);
-		}
+		int ItemID = pStep->m_Requirements[i].m_ItemID;
+		if (ItemID) pGameServer->Server()->RemItem(ClientID, ItemID,
+			pStep->m_Requirements[i].m_NeedCount, -1);
 	}
 
-	// 发放经验奖励
-	if (pStep->m_ExpReward > 0)
-		pGameServer->m_apPlayers[ClientID]->ExpAdd(pStep->m_ExpReward);
+	// 2) 发放奖励
+	if (pStep->m_ExpReward   > 0) pGameServer->m_apPlayers[ClientID]->ExpAdd(pStep->m_ExpReward);
+	if (pStep->m_MoneyReward > 0) pGameServer->m_apPlayers[ClientID]->MoneyAdd(pStep->m_MoneyReward);
+	if (pStep->m_UpPointReward > 0) pGameServer->m_apPlayers[ClientID]->GiveUpPoint(pStep->m_UpPointReward);
 
-	// 发放金钱奖励
-	if (pStep->m_MoneyReward > 0)
-		pGameServer->m_apPlayers[ClientID]->MoneyAdd(pStep->m_MoneyReward);
-
-	// 发放升级点奖励
-	if (pStep->m_UpPointReward > 0)
-		pGameServer->m_apPlayers[ClientID]->GiveUpPoint(pStep->m_UpPointReward);
-
-	// 发放邮件物品
 	for (int i = 0; i < 2; i++)
-	{
-		if (pStep->m_MailItems[i].m_ItemID != 0)
-			pGameServer->SendMail(ClientID, pStep->m_MailItems[i].m_MailType, pStep->m_MailItems[i].m_ItemID, 1);
-	}
+		if (pStep->m_MailItems[i].m_ItemID)
+			pGameServer->SendMail(ClientID, pStep->m_MailItems[i].m_MailType,
+				pStep->m_MailItems[i].m_ItemID, 1);
 
-	// 推进任务进度
+	// 3) 推进进度
 	pGameServer->m_apPlayers[ClientID]->AccData()->m_Quest++;
 	pGameServer->UpdateStats(ClientID);
 }
 
-// ---- 主线任务: 执行 passquest 命令 ----
+// =====================================================================
+// 主线任务 ─ /passquest
+// =====================================================================
+
 void CQuestManager::HandlePassQuest(int ClientID, CGameContext *pGameServer)
 {
 	const SMQuestStepDef *pStep = GetCurrentMainQuestStep(ClientID, pGameServer);
 	if (!pStep)
 	{
-		// 任务已完成或不可用
 		if (pGameServer->m_apPlayers[ClientID]->AccData()->m_Quest > EMainQuests::QUEST8_SKELET)
-			pGameServer->SendChatTarget_Localization(ClientID, CHATCATEGORY_DEFAULT, "全部主线任务已完成!", NULL);
+			pGameServer->SendChatTarget_Localization(ClientID, CHATCATEGORY_DEFAULT,
+				"全部主线任务已完成!", NULL);
 		return;
 	}
-
 	if (!CanCompleteMainQuest(ClientID, pGameServer))
 	{
-		pGameServer->SendChatTarget_Localization(ClientID, CHATCATEGORY_DEFAULT, "任务还未完成!", NULL);
+		pGameServer->SendChatTarget_Localization(ClientID, CHATCATEGORY_DEFAULT,
+			"任务还未完成!", NULL);
 		return;
 	}
-
 	CompleteMainQuest(ClientID, pGameServer);
 }
 
-// ---- 主线任务: 显示菜单 ----
+// =====================================================================
+// 主线菜单 ─ 奖励文本构建 & 菜单显示
+// =====================================================================
+
+void CQuestManager::BuildRewardText(const SMQuestStepDef *pStep,
+	char *pBuf, int BufSize) const
+{
+	pBuf[0] = '\0';
+	if      (pStep->m_ExpReward > 0 && pStep->m_MoneyReward > 0)
+		str_format(pBuf, BufSize, "%d经验/%d白银", pStep->m_ExpReward, pStep->m_MoneyReward);
+	else if (pStep->m_ExpReward > 0)
+		str_format(pBuf, BufSize, "%d经验", pStep->m_ExpReward);
+	else if (pStep->m_MoneyReward > 0)
+		str_format(pBuf, BufSize, "%d白银", pStep->m_MoneyReward);
+	else if (pStep->m_UpPointReward > 0)
+		str_format(pBuf, BufSize, "%d升级点", pStep->m_UpPointReward);
+}
+
 void CQuestManager::ShowMainQuestMenu(int ClientID, CGameContext *pGameServer)
 {
 	const SMQuestStepDef *pStep = GetCurrentMainQuestStep(ClientID, pGameServer);
@@ -322,565 +285,471 @@ void CQuestManager::ShowMainQuestMenu(int ClientID, CGameContext *pGameServer)
 		return;
 	}
 
-	// 显示任务信息
+	// 标题 + 描述
 	pGameServer->AddVote_Localization(ClientID, "null", pStep->m_LocaleTitle);
-
-	// 显示描述行
 	for (int i = 0; i < 5; i++)
-	{
-		const char *pDesc = pStep->m_LocaleDescLines[i];
-		if (pDesc && pDesc[0] != '\0')
-			pGameServer->AddVote_Localization(ClientID, "null", pDesc);
-	}
+		if (pStep->m_LocaleDescLines[i][0])
+			pGameServer->AddVote_Localization(ClientID, "null", pStep->m_LocaleDescLines[i]);
 
-	// 显示第一个需求物品
+	// 需求物品 (支持 1 或 2 种)
 	if (pStep->m_Requirements[0].m_ItemID != 0)
 	{
-		int Counts = pGameServer->Server()->GetItemCount(ClientID, pStep->m_Requirements[0].m_ItemID);
-		int Need = pStep->m_Requirements[0].m_NeedCount;
+		IServer *pServer = pGameServer->Server();
+		int Have1 = pServer->GetItemCount(ClientID, pStep->m_Requirements[0].m_ItemID);
+		int Need1 = pStep->m_Requirements[0].m_NeedCount;
 
 		if (pStep->m_Requirements[1].m_ItemID != 0)
 		{
-			// 有两个需求物品
-			int Counts2 = pGameServer->Server()->GetItemCount(ClientID, pStep->m_Requirements[1].m_ItemID);
+			int Have2 = pServer->GetItemCount(ClientID, pStep->m_Requirements[1].m_ItemID);
 			int Need2 = pStep->m_Requirements[1].m_NeedCount;
 			pGameServer->AddVote_Localization(ClientID, "null",
 				"任务需求: {str:item1}, {str:item2} [{int:get}/{int:need} & {int:get2}/{int:need2}]",
-				"item1", pGameServer->Server()->GetItemName(ClientID, pStep->m_Requirements[0].m_ItemID),
-				"item2", pGameServer->Server()->GetItemName(ClientID, pStep->m_Requirements[1].m_ItemID),
-				"get", &Counts, "need", &Need,
-				"get2", &Counts2, "need2", &Need2);
+				"item1", pServer->GetItemName(ClientID, pStep->m_Requirements[0].m_ItemID),
+				"item2", pServer->GetItemName(ClientID, pStep->m_Requirements[1].m_ItemID),
+				"get", &Have1, "need", &Need1,
+				"get2", &Have2, "need2", &Need2);
 		}
 		else
 		{
-			// 只有一个需求物品
 			pGameServer->AddVote_Localization(ClientID, "null",
 				"[已获得: {int:get}/共需要: {int:need}]",
-				"get", &Counts, "need", &Need);
+				"get", &Have1, "need", &Need1);
 		}
 	}
 
-	// 显示奖励信息
-	char aRewardBuf[256] = {0};
-	if (pStep->m_ExpReward > 0 && pStep->m_MoneyReward > 0)
-		str_format(aRewardBuf, sizeof(aRewardBuf), "%d经验/%d白银", pStep->m_ExpReward, pStep->m_MoneyReward);
-	else if (pStep->m_ExpReward > 0)
-		str_format(aRewardBuf, sizeof(aRewardBuf), "%d经验", pStep->m_ExpReward);
-	else if (pStep->m_MoneyReward > 0)
-		str_format(aRewardBuf, sizeof(aRewardBuf), "%d白银", pStep->m_MoneyReward);
-	else if (pStep->m_UpPointReward > 0)
-		str_format(aRewardBuf, sizeof(aRewardBuf), "%d升级点", pStep->m_UpPointReward);
+	// 奖励文本
+	char aReward[256] = {0};
+	BuildRewardText(pStep, aReward, sizeof(aReward));
+	if (aReward[0])
+		pGameServer->AddVote_Localization(ClientID, "null", "任务奖励: {str:got}", "got", aReward);
 
-	if (aRewardBuf[0] != '\0')
-		pGameServer->AddVote_Localization(ClientID, "null", "任务奖励: {str:got}", "got", aRewardBuf);
-
-	// 显示特殊奖励（邮件物品等）
-	if (pStep->m_MailItems[0].m_ItemID != 0 || pStep->m_MailItems[1].m_ItemID != 0)
+	// 邮件物品提示
+	if (pStep->m_MailItems[0].m_ItemID || pStep->m_MailItems[1].m_ItemID)
 	{
-		char aMailBuf[128] = {0};
-		if (pStep->m_MailItems[0].m_ItemID != 0 && pStep->m_MailItems[1].m_ItemID != 0)
-			str_format(aMailBuf, sizeof(aMailBuf), "%s, %s",
-				pGameServer->Server()->GetItemName(ClientID, pStep->m_MailItems[0].m_ItemID),
-				pGameServer->Server()->GetItemName(ClientID, pStep->m_MailItems[1].m_ItemID));
-		else if (pStep->m_MailItems[0].m_ItemID != 0)
-			str_format(aMailBuf, sizeof(aMailBuf), "%s",
-				pGameServer->Server()->GetItemName(ClientID, pStep->m_MailItems[0].m_ItemID));
+		char aMail[128] = {0};
+		const char *pName0 = pStep->m_MailItems[0].m_ItemID
+			? pGameServer->Server()->GetItemName(ClientID, pStep->m_MailItems[0].m_ItemID) : "";
+		const char *pName1 = pStep->m_MailItems[1].m_ItemID
+			? pGameServer->Server()->GetItemName(ClientID, pStep->m_MailItems[1].m_ItemID) : "";
+
+		if (pName0[0] && pName1[0])
+			str_format(aMail, sizeof(aMail), "%s, %s", pName0, pName1);
+		else if (pName0[0])
+			str_format(aMail, sizeof(aMail), "%s", pName0);
 		else
-			str_format(aMailBuf, sizeof(aMailBuf), "%s",
-				pGameServer->Server()->GetItemName(ClientID, pStep->m_MailItems[1].m_ItemID));
-		pGameServer->AddVote_Localization(ClientID, "null", "+ {str:items}", "items", aMailBuf);
+			str_format(aMail, sizeof(aMail), "%s", pName1);
+
+		pGameServer->AddVote_Localization(ClientID, "null", "+ {str:items}", "items", aMail);
 	}
 
 	pGameServer->AddVote_Localization(ClientID, "passquest", "- 提交通过任务");
 }
 
-// ============================================================
-// 每日任务实现
-// ============================================================
+// =====================================================================
+// 每日任务 ─ Tick / 刷新 / 日期 ID
+// =====================================================================
 
 int CQuestManager::GetDailyID() const
 {
-	time_t nowtime;
-	time(&nowtime);
-	tm *pTime = localtime(&nowtime);
-	return pTime->tm_year + pTime->tm_mday + pTime->tm_mon + pTime->tm_yday + pTime->tm_wday + pTime->tm_mday;
+	time_t t; time(&t);
+	tm *pT = localtime(&t);
+	return pT->tm_year + pT->tm_mday + pT->tm_mon + pT->tm_yday + pT->tm_wday + pT->tm_mday;
 }
 
 void CQuestManager::DailyTick(CGameContext *pGameServer)
 {
-	time_t nowtime;
-	time(&nowtime);
-	tm *pTime = localtime(&nowtime);
+	time_t t; time(&t);
+	tm *pT = localtime(&t);
+	if (pT->tm_hour == m_LastHour) return;
 
-	if (pTime->tm_hour != m_LastHour)
+	if (m_LastHour > pT->tm_hour)
 	{
-		if (m_LastHour > pTime->tm_hour)
-		{
-			RefreshDaily(true, pGameServer);
-			pGameServer->SendChatTarget_Localization(-1, CHATCATEGORY_DEFAULT, "每日任务已更新！");
-		}
-		m_LastHour = pTime->tm_hour;
+		RefreshDaily(true, pGameServer);
+		pGameServer->SendChatTarget_Localization(-1, CHATCATEGORY_DEFAULT, "每日任务已更新！");
 	}
+	m_LastHour = pT->tm_hour;
 }
 
 void CQuestManager::RefreshDaily(bool Reset, CGameContext *pGameServer)
 {
 	srand(GetDailyID());
 	m_RandomNumber = rand();
+	if (!Reset) return;
 
-	if (Reset)
+	for (int i = 0; i < MAX_PLAYERS; i++)
 	{
-		for (int i = 0; i < MAX_PLAYERS; i++)
-		{
-			CPlayer *pP = pGameServer->m_apPlayers[i];
-			if (!pP || pP->IsBot())
-				continue;
-
-			pGameServer->Server()->RemItem(i, COLLECTQUEST, pGameServer->Server()->GetItemCount(i, COLLECTQUEST), -1);
-			pGameServer->Server()->RemItem(i, KILLQUEST, pGameServer->Server()->GetItemCount(i, KILLQUEST), -1);
-			pGameServer->Server()->RemItem(i, CHALLENGEQUEST, pGameServer->Server()->GetItemCount(i, CHALLENGEQUEST), -1);
-			pGameServer->Server()->SetItemSettingsCount(i, COLLECTQUEST, 0);
-			pGameServer->Server()->SetItemSettingsCount(i, KILLQUEST, 0);
-			pGameServer->Server()->SetItemSettingsCount(i, CHALLENGEQUEST, 0);
-
-			pGameServer->m_apPlayers[i]->m_FinishedCollectQuest = false;
-			pGameServer->m_apPlayers[i]->m_FinishedKillQuest = false;
-			pGameServer->m_apPlayers[i]->m_FinishedChallengeQuest = false;
-
-			pGameServer->UpdateStats(i);
-		}
-		pGameServer->Server()->Execute("UPDATE tw_uItems SET item_count = 1,item_settings = 0 WHERE il_id = 159");
-		pGameServer->Server()->Execute("UPDATE tw_uItems SET item_count = 0,item_settings = 0 WHERE il_id = 164");
-		pGameServer->Server()->Execute("UPDATE tw_uItems SET item_count = 0,item_settings = 0 WHERE il_id = 165");
+		CPlayer *pP = pGameServer->m_apPlayers[i];
+		if (!pP || pP->IsBot()) continue;
+		pGameServer->Server()->RemItem(i, COLLECTQUEST,  pGameServer->Server()->GetItemCount(i, COLLECTQUEST), -1);
+		pGameServer->Server()->RemItem(i, KILLQUEST,     pGameServer->Server()->GetItemCount(i, KILLQUEST), -1);
+		pGameServer->Server()->RemItem(i, CHALLENGEQUEST,pGameServer->Server()->GetItemCount(i, CHALLENGEQUEST), -1);
+		pGameServer->Server()->SetItemSettingsCount(i, COLLECTQUEST, 0);
+		pGameServer->Server()->SetItemSettingsCount(i, KILLQUEST, 0);
+		pGameServer->Server()->SetItemSettingsCount(i, CHALLENGEQUEST, 0);
+		pP->m_FinishedCollectQuest = false;
+		pP->m_FinishedKillQuest = false;
+		pP->m_FinishedChallengeQuest = false;
+		pGameServer->UpdateStats(i);
 	}
+	pGameServer->Server()->Execute("UPDATE tw_uItems SET item_count = 1,item_settings = 0 WHERE il_id = 159");
+	pGameServer->Server()->Execute("UPDATE tw_uItems SET item_count = 0,item_settings = 0 WHERE il_id = 164");
+	pGameServer->Server()->Execute("UPDATE tw_uItems SET item_count = 0,item_settings = 0 WHERE il_id = 165");
 }
 
-// ---- 每日任务: 根据类型和子类型计算物品/需求/奖励 ----
+// =====================================================================
+// 每日任务 ─ 随机数据计算: 目标物品 / 需求数量 / 升级点奖励
+// =====================================================================
 
 int CQuestManager::GetDailyQuestItem(int QuestType, int SubType) const
 {
-	long long int RandomNumber = m_RandomNumber;
-	const SDailySubTypeDef *pDef = 0;
+	const SDailySubTypeDef *pDef = FindDailySubType(QuestType, SubType);
+	if (!pDef || pDef->m_ItemPool.m_Count <= 0) return 1;
 
-	for (int i = 0; i < ms_NumDailySubTypes; i++)
-	{
-		if (ms_aDailySubTypes[i].m_Type == QuestType && ms_aDailySubTypes[i].m_SubType == SubType)
-		{
-			pDef = &ms_aDailySubTypes[i];
-			break;
-		}
-	}
-	if (!pDef || pDef->m_ItemPool.m_Count <= 0)
-		return 1;
+	long long Divisor = 1;
+	if (QuestType == kDailyKill)                        Divisor = kDailyKillDivisor;
+	else if (QuestType == kDailyChallenge
+	      && SubType == kDailyChallengeKill)             Divisor = kDailyChallengeDivisor;
 
-	// 为不同类型的每日任务使用不同的随机偏移
-	long long int Divisor = 1;
-	switch (QuestType)
-	{
-	case DAILY_KILL:
-		Divisor = 17;
-		break;
-	case DAILY_CHALLENGE:
-		if (SubType == DAILYSUB_CHALLENGE_KILL)
-			Divisor = 18;
-		break;
-	}
-
-	int Index = (RandomNumber / Divisor) % pDef->m_ItemPool.m_Count;
-	return pDef->m_ItemPool.m_Items[Index];
+	return pDef->m_ItemPool.m_Items[(m_RandomNumber / Divisor) % pDef->m_ItemPool.m_Count];
 }
 
 int CQuestManager::GetDailyQuestNeed(int QuestType, int SubType) const
 {
-	long long int R = m_RandomNumber;
-	int Index;
+	long long r = m_RandomNumber;
 
 	switch (QuestType)
 	{
-	case DAILY_COLLECT:
+	case kDailyCollect:
 		switch (SubType)
 		{
-		case DAILYSUB_COLLECT_FARM:     return (R % 10 + 8) * 1000000;
-		case DAILYSUB_COLLECT_FOOD:     return R % 50 + 30;
-		case DAILYSUB_COLLECT_OFFERING:
-			Index = R % 6;
-			if (Index == 4 || Index == 5)
-				return R % 300;
-			return R % 2000 + 300;
-		case DAILYSUB_COLLECT_MINING:   return (R % 23 + 8) * 100000;
+		case kDailyCollectFarm:    return (r % kCollectFarmMul + kCollectFarmMin) * kCollectFarmScale;
+		case kDailyCollectFood:    return (r % kCollectFoodMul) + kCollectFoodMin;
+		case kDailyCollectOffering:
+			if ((r % kOfferingBranchCount) == kOfferingBranch1
+			 || (r % kOfferingBranchCount) == kOfferingBranch2)
+				return r % kOfferingSmallMax;
+			return (r % kOfferingLargeMax) + kOfferingLargeMin;
+		case kDailyCollectMining:  return (r % kCollectMiningMul + kCollectMiningMin) * kCollectMiningScale;
 		}
 		break;
-
-	case DAILY_KILL:
-		return ((R / 2) % 500) + 500;
-
-	case DAILY_CHALLENGE:
+	case kDailyKill:
+		return ((r / 2) % kKillNeedMul) + kKillNeedMin;
+	case kDailyChallenge:
 		switch (SubType)
 		{
-		case DAILYSUB_CHALLENGE_FARM:     return (R % 10 + 8) * 10000000;
-		case DAILYSUB_CHALLENGE_OFFERING: return R % 1000 + 2000;
-		case DAILYSUB_CHALLENGE_MINING:   return (R % 23 + 8) * 10000000;
-		case DAILYSUB_CHALLENGE_KILL:     return 7000;
+		case kDailyChallengeFarm:    return (r % kChallengeFarmMul + kChallengeFarmMin) * kChallengeFarmScale;
+		case kDailyChallengeOffering: return (r % kChallengeOfferingMul) + kChallengeOfferingMin;
+		case kDailyChallengeMining:  return (r % kChallengeMiningMul + kChallengeMiningMin) * kChallengeMiningScale;
+		case kDailyChallengeKill:    return kChallengeKillNeed;
 		}
 		break;
 	}
-	return 1145141919;  // 哨兵值
+	return 0;
 }
 
 int CQuestManager::GetDailyQuestUpgr(int QuestType, int SubType) const
 {
-	long long int R = m_RandomNumber;
-
+	long long r = m_RandomNumber;
 	switch (QuestType)
 	{
-	case DAILY_COLLECT:
+	case kDailyCollect:
 		switch (SubType)
 		{
-		case DAILYSUB_COLLECT_FARM:     return 50;
-		case DAILYSUB_COLLECT_FOOD:     return 70;
-		case DAILYSUB_COLLECT_OFFERING:
-			if (R % 6 == 4 || R % 6 == 5)
-				return R % 1000 + 500;
-			return R % 500;
-		case DAILYSUB_COLLECT_MINING:   return 70;
+		case kDailyCollectFarm:   return 50;
+		case kDailyCollectFood:   return 70;
+		case kDailyCollectMining: return 70;
+		case kDailyCollectOffering:
+			if ((r % kOfferingBranchCount) == kOfferingBranch1
+			 || (r % kOfferingBranchCount) == kOfferingBranch2)
+				return (r % kOfferingUpgrHighMul) + kOfferingUpgrHighMin;
+			return (r % kOfferingUpgrMul) + kOfferingUpgrBase;
 		}
 		break;
-
-	case DAILY_KILL:
-		return R % 100 + 150;
-
-	case DAILY_CHALLENGE:
+	case kDailyKill:
+		return (r % kKillUpgrMul) + kKillUpgrMin;
+	case kDailyChallenge:
 		switch (SubType)
 		{
-		case DAILYSUB_CHALLENGE_FARM:     return 750;
-		case DAILYSUB_CHALLENGE_OFFERING: return 750;
-		case DAILYSUB_CHALLENGE_MINING:   return 750;
-		case DAILYSUB_CHALLENGE_KILL:
-			if (R % 6 == 4 || R % 6 == 5)
-				return 750;
-			return R % 750 + 200;
+		case kDailyChallengeFarm:
+		case kDailyChallengeOffering:
+		case kDailyChallengeMining:  return kChallengeUpgrDefault;
+		case kDailyChallengeKill:
+			if ((r % kChallengeBranchCount) == kChallengeBranchHigh
+			 || (r % kChallengeBranchCount) == kChallengeBranchHigh2)
+				return kChallengeUpgrDefault;
+			return (r % kChallengeUpgrDefault) + kChallengeUpgrMin;
 		}
 		break;
 	}
 	return 1;
 }
 
-// ---- 每日任务: 检查是否已完成 ----
-bool CQuestManager::IsPlayerDailyQuestCompleted(int ClientID, int QuestType, CGameContext *pGameServer) const
+// =====================================================================
+// 每日任务 ─ 玩家状态检查 & 奖励发放
+// =====================================================================
+
+bool CQuestManager::IsPlayerDailyCompleted(int ClientID, int Type,
+	CGameContext *pGameServer) const
 {
-	int DailyID = GetDailyID();
-	switch (QuestType)
-	{
-	case DAILY_COLLECT:
-		return pGameServer->Server()->GetItemSettings(ClientID, COLLECTQUEST) == DailyID;
-	case DAILY_KILL:
-		return pGameServer->Server()->GetItemSettings(ClientID, KILLQUEST) == DailyID;
-	case DAILY_CHALLENGE:
-		return pGameServer->Server()->GetItemSettings(ClientID, CHALLENGEQUEST) == DailyID;
-	}
-	return false;
+	return pGameServer->Server()->GetItemSettings(ClientID,
+		TrackingItemForType(Type)) == GetDailyID();
 }
 
-	// ---- 每日任务: 检查是否可完成（用户操作 'passdayquest'） ----
-	bool CQuestManager::CanCompleteDailyQuest(int ClientID, int QuestType, int SubType, CGameContext *pGameServer) const
-	{
-		CPlayer *pPlayer = pGameServer->m_apPlayers[ClientID];
-
-		switch (QuestType)
-		{
-		case DAILY_COLLECT:
-			if (pPlayer->m_FinishedCollectQuest)
-				return false;
-			break;
-		case DAILY_KILL:
-			if (pPlayer->m_FinishedKillQuest)
-				return false;
-			break;
-		case DAILY_CHALLENGE:
-			if (pPlayer->m_FinishedChallengeQuest)
-				return false;
-			break;
-		default:
-			return false;
-		}
-
-		int Item = GetDailyQuestItem(QuestType, SubType);
-		int Need = GetDailyQuestNeed(QuestType, SubType);
-
-		// CHALLENGE4 检查专用的任务计数物品(CHALLENGEQUEST)，而非目标物品列表中的 bot ID
-		if (QuestType == DAILY_CHALLENGE && SubType == DAILYSUB_CHALLENGE_KILL)
-		{
-			return static_cast<unsigned long long>(pGameServer->Server()->GetItemCount(ClientID, CHALLENGEQUEST))
-			       >= static_cast<unsigned long long>(Need);
-		}
-
-		return static_cast<unsigned long long>(pGameServer->Server()->GetItemCount(ClientID, Item))
-		       >= static_cast<unsigned long long>(Need);
-	}
-
-// ---- 每日任务: 完成并领取奖励 ----
-void CQuestManager::CompleteDailyQuest(int ClientID, int QuestType, int SubType, CGameContext *pGameServer)
+bool CQuestManager::CheckDailyPassConditions(int ClientID, int Type,
+	int SubType, CGameContext *pGameServer) const
 {
-	int Item = GetDailyQuestItem(QuestType, SubType);
-	int Need = GetDailyQuestNeed(QuestType, SubType);
-	int Upgr = GetDailyQuestUpgr(QuestType, SubType);
-	int DailyID = GetDailyID();
+	CPlayer *pP = pGameServer->m_apPlayers[ClientID];
 
-	// 扣除物品（挑战任务子类型4不需要扣除物品，只需要达到击杀数）
-	if (QuestType == DAILY_CHALLENGE && SubType == DAILYSUB_CHALLENGE_KILL)
+	switch (Type)
 	{
-		// CHALLENGE4: 只检查 CHALLENGEQUEST 计数，不扣除
-	}
-	else
-	{
-		pGameServer->Server()->RemItem(ClientID, Item, Need, -1);
+	case kDailyCollect:   if (pP->m_FinishedCollectQuest)    return false; break;
+	case kDailyKill:      if (pP->m_FinishedKillQuest)       return false; break;
+	case kDailyChallenge: if (pP->m_FinishedChallengeQuest)  return false; break;
+	default: return false;
 	}
 
-	// 发放升级点奖励
-	pGameServer->m_apPlayers[ClientID]->GiveUpPoint(Upgr);
+	int Need = GetDailyQuestNeed(Type, SubType);
 
-	// 标记完成
-	int QuestItemID;
-	switch (QuestType)
+	if (Type == kDailyChallenge && SubType == kDailyChallengeKill)
+		return pGameServer->Server()->GetItemCount(ClientID, CHALLENGEQUEST)
+		       >= (unsigned long long)Need;
+
+	int Item = GetDailyQuestItem(Type, SubType);
+	return pGameServer->Server()->GetItemCount(ClientID, Item) >= (unsigned long long)Need;
+}
+
+void CQuestManager::GrantDailyReward(int ClientID, int Type, int SubType,
+	CGameContext *pGameServer)
+{
+	// CHALLENGE4 只计数不扣物品
+	if (!(Type == kDailyChallenge && SubType == kDailyChallengeKill))
 	{
-	case DAILY_COLLECT:
-		QuestItemID = COLLECTQUEST;
-		pGameServer->m_apPlayers[ClientID]->m_FinishedCollectQuest = true;
-		break;
-	case DAILY_KILL:
-		QuestItemID = KILLQUEST;
-		pGameServer->m_apPlayers[ClientID]->m_FinishedKillQuest = true;
-		break;
-	case DAILY_CHALLENGE:
-		QuestItemID = CHALLENGEQUEST;
-		pGameServer->m_apPlayers[ClientID]->m_FinishedChallengeQuest = true;
-		break;
-	default:
+		int Item = GetDailyQuestItem(Type, SubType);
+		pGameServer->Server()->RemItem(ClientID, Item,
+			GetDailyQuestNeed(Type, SubType), -1);
+	}
+
+	pGameServer->m_apPlayers[ClientID]->GiveUpPoint(GetDailyQuestUpgr(Type, SubType));
+
+	int TrackID = TrackingItemForType(Type);
+	pGameServer->Server()->SetItemSettingsCount(ClientID, TrackID, GetDailyID());
+
+	switch (Type)
+	{
+	case kDailyCollect:   pGameServer->m_apPlayers[ClientID]->m_FinishedCollectQuest   = true; break;
+	case kDailyKill:      pGameServer->m_apPlayers[ClientID]->m_FinishedKillQuest      = true; break;
+	case kDailyChallenge: pGameServer->m_apPlayers[ClientID]->m_FinishedChallengeQuest = true; break;
+	}
+}
+
+// =====================================================================
+// 每日任务 ─ /passdayquest
+// =====================================================================
+
+void CQuestManager::HandlePassDayQuest(int ClientID, CGameContext *pGameServer)
+{
+	int Type = pGameServer->m_apPlayers[ClientID]->m_SelectQuest;
+	int Sub  = pGameServer->m_apPlayers[ClientID]->m_SelectSubQuest;
+	if (Type < 0 || Type >= kNumDailyTypes) return;
+
+	if (!CheckDailyPassConditions(ClientID, Type, Sub, pGameServer))
+	{
+		pGameServer->SendChatTarget_Localization(ClientID, CHATCATEGORY_DEFAULT,
+			"任务还未完成!", NULL);
 		return;
 	}
 
-	pGameServer->Server()->SetItemSettingsCount(ClientID, QuestItemID, DailyID);
+	GrantDailyReward(ClientID, Type, Sub, pGameServer);
+	pGameServer->ResetVotes(ClientID, DAYQUEST);
 }
 
-// ---- 每日任务: 显示菜单 ----
-void CQuestManager::ShowDailyQuestMenu(int ClientID, CGameContext *pGameServer, bool ResetVotes)
+// =====================================================================
+// 每日任务 ─ 类型 / 子类型 切换
+// =====================================================================
+
+void CQuestManager::HandleSelectQuestType(int ClientID, int QuestType,
+	CGameContext *pGameServer)
 {
-	if (ResetVotes)
-		pGameServer->m_apPlayers[ClientID]->m_LastVotelist = QUESTMENU;
+	int *pSelect = &pGameServer->m_apPlayers[ClientID]->m_SelectQuest;
+	*pSelect = (*pSelect == QuestType) ? -1 : QuestType;
+	pGameServer->ResetVotes(ClientID, DAYQUEST);
+}
 
-	int QuestType = pGameServer->m_apPlayers[ClientID]->m_SelectQuest;
-	int SubType = pGameServer->m_apPlayers[ClientID]->m_SelectSubQuest;
+void CQuestManager::HandleSelectSubQuest(int ClientID, int SubType,
+	CGameContext *pGameServer)
+{
+	int *pSel = &pGameServer->m_apPlayers[ClientID]->m_SelectSubQuest;
+	*pSel = (*pSel == SubType) ? -1 : SubType;
+	pGameServer->ResetVotes(ClientID, DAYQUEST);
+}
 
-	int Item = GetDailyQuestItem(QuestType, SubType);
-	int Num = GetDailyQuestNeed(QuestType, SubType);
-	int Upgr = GetDailyQuestUpgr(QuestType, SubType);
+// =====================================================================
+// 每日菜单 ─ 分区渲染辅助
+// =====================================================================
 
+void CQuestManager::ShowDailyHeader(int ClientID, CGameContext *pGameServer) const
+{
+	pGameServer->m_apPlayers[ClientID]->m_LastVotelist = QUESTMENU;
 	pGameServer->AddVote_Localization(ClientID, "null", "☪ 信息 ( ′ ω ` )?:");
 	pGameServer->AddVote_Localization(ClientID, "null", "每日任务!");
 	int iRand = (int)m_RandomNumber;
-	pGameServer->AddVote_Localization(ClientID, "null", "今日任务序列：{int:randomNum}", "randomNum", &iRand);
+	pGameServer->AddVote_Localization(ClientID, "null",
+		"今日任务序列：{int:randomNum}", "randomNum", &iRand);
 	pGameServer->AddVote("", "null", ClientID);
 	pGameServer->AddVote_Localization(ClientID, "que0", "☞ 收集任务");
 	pGameServer->AddVote_Localization(ClientID, "que1", "☞ 击杀任务");
 	pGameServer->AddVote_Localization(ClientID, "que2", "☞ 挑战任务");
+}
 
-	// 收集任务详情
-	if (QuestType == DAILY_COLLECT)
+void CQuestManager::ShowDailyCollectSection(int ClientID, int SubType,
+	CGameContext *pGameServer)
+{
+	pGameServer->AddVote("", "null", ClientID);
+
+	if (IsPlayerDailyCompleted(ClientID, kDailyCollect, pGameServer))
 	{
-		pGameServer->AddVote("", "null", ClientID);
-		if (IsPlayerDailyQuestCompleted(ClientID, DAILY_COLLECT, pGameServer))
-		{
-			pGameServer->AddVote_Localization(ClientID, "que0", "- 收集任务已完成");
-		}
-		else
-		{
-			int Have = pGameServer->Server()->GetItemCount(ClientID, Item);
-
-			pGameServer->AddVote_Localization(ClientID, "sque0", "- 农业经济");
-			if (random_prob(0.005))
-				pGameServer->AddVote_Localization(ClientID, "sque2", "- 食品...?");
-			else
-				pGameServer->AddVote_Localization(ClientID, "sque1", "- 食品");
-			pGameServer->AddVote_Localization(ClientID, "sque3", "- 矿业经济");
-			pGameServer->AddVote("", "null", ClientID);
-
-			if (SubType == DAILYSUB_COLLECT_FARM)
-			{
-				pGameServer->AddVote_Localization(ClientID, "null", "收集 {str:iname} [{int:num}/{int:need}]",
-					"iname", pGameServer->Server()->GetItemName(ClientID, Item), "num", &Have, "need", &Num);
-				pGameServer->AddVote_Localization(ClientID, "null", "任务奖励：{int:num}升级点", "num", &Upgr);
-				pGameServer->AddVote_Localization(ClientID, "passdayquest", "- 提交任务");
-			}
-			else if (SubType == DAILYSUB_COLLECT_FOOD)
-			{
-				pGameServer->AddVote_Localization(ClientID, "null", "收集 {str:iname} [{int:num}/{int:need}]",
-					"iname", pGameServer->Server()->GetItemName(ClientID, Item), "num", &Have, "need", &Num);
-				pGameServer->AddVote_Localization(ClientID, "null", "任务奖励：{int:num}升级点", "num", &Upgr);
-				pGameServer->AddVote_Localization(ClientID, "passdayquest", "- 提交任务");
-			}
-			else if (SubType == DAILYSUB_COLLECT_OFFERING)
-			{
-				pGameServer->AddVote_Localization(ClientID, "null", "Vivit为DerumDeumVivitDerumDeumVivitDerumDeum");
-				pGameServer->AddVote_Localization(ClientID, "null", "Vivit神DerumDeumVivitDerumDeumVivitDerumDeum");
-				pGameServer->AddVote_Localization(ClientID, "null", "Vivit献DerumDeumVivitDerumDeumVivitDerumDeum");
-				pGameServer->AddVote_Localization(ClientID, "null", "Vivit上DerumDeumVivitDerumDeumVivitDerumDeum");
-				pGameServer->AddVote_Localization(ClientID, "null", "THA{str:iname} [{int:num}/{int:need}]",
-					"iname", pGameServer->Server()->GetItemName(ClientID, Item), "num", &Have, "need", &Num);
-				pGameServer->AddVote_Localization(ClientID, "null", "enruw奖ails：???升级点");
-				pGameServer->AddVote_Localization(ClientID, "passdayquest", "- S贡品S -");
-			}
-			else if (SubType == DAILYSUB_COLLECT_MINING)
-			{
-				pGameServer->AddVote_Localization(ClientID, "null", "收集 {str:iname} [{int:num}/{int:need}]",
-					"iname", pGameServer->Server()->GetItemName(ClientID, Item), "num", &Have, "need", &Num);
-				pGameServer->AddVote_Localization(ClientID, "null", "任务奖励：{int:num}升级点", "num", &Upgr);
-				pGameServer->AddVote_Localization(ClientID, "passdayquest", "- 提交任务");
-			}
-		}
-		pGameServer->AddVote("", "null", ClientID);
-		pGameServer->AddVote("", "null", ClientID);
+		pGameServer->AddVote_Localization(ClientID, "que0", "- 收集任务已完成");
+		return;
 	}
 
-	// 击杀任务详情
-	if (QuestType == DAILY_KILL)
+	int Item = GetDailyQuestItem(kDailyCollect, SubType);
+	int Need = GetDailyQuestNeed(kDailyCollect, SubType);
+	int Upgr = GetDailyQuestUpgr(kDailyCollect, SubType);
+	int Have = pGameServer->Server()->GetItemCount(ClientID, Item);
+
+	// 子类型选单（隐藏支线: 0.5% 概率食品 → "食品...?"）
+	pGameServer->AddVote_Localization(ClientID, "sque0", "- 农业经济");
+	pGameServer->AddVote_Localization(ClientID,
+		random_prob(kHiddenOfferingProb) ? "sque2" : "sque1",
+		random_prob(kHiddenOfferingProb) ? "- 食品...?" : "- 食品");
+	pGameServer->AddVote_Localization(ClientID, "sque3", "- 矿业经济");
+	pGameServer->AddVote("", "null", ClientID);
+
+	if (SubType == kDailyCollectOffering)
 	{
-		if (IsPlayerDailyQuestCompleted(ClientID, DAILY_KILL, pGameServer))
-		{
-			pGameServer->AddVote_Localization(ClientID, "que0", "- 击杀任务已完成");
-		}
-		else
-		{
-			int Have = pGameServer->Server()->GetItemCount(ClientID, KILLQUEST);
-			pGameServer->AddVote_Localization(ClientID, "null", "击杀 {str:iname} [{int:num}/{int:need}]",
-				"iname", pGameServer->GetBotName(Item), "num", &Have, "need", &Num);
-			pGameServer->AddVote_Localization(ClientID, "null", "任务奖励：{int:num}升级点", "num", &Upgr);
-			pGameServer->AddVote_Localization(ClientID, "passdayquest", "- 提交任务");
-			pGameServer->AddVote("", "null", ClientID);
-			pGameServer->AddVote("", "null", ClientID);
-		}
+		pGameServer->AddVote_Localization(ClientID, "null", "Vivit为DerumDeumVivitDerumDeumVivitDerumDeum");
+		pGameServer->AddVote_Localization(ClientID, "null", "Vivit神DerumDeumVivitDerumDeumVivitDerumDeum");
+		pGameServer->AddVote_Localization(ClientID, "null", "Vivit献DerumDeumVivitDerumDeumVivitDerumDeum");
+		pGameServer->AddVote_Localization(ClientID, "null", "Vivit上DerumDeumVivitDerumDeumVivitDerumDeum");
+		pGameServer->AddVote_Localization(ClientID, "null",
+			"THA{str:iname} [{int:num}/{int:need}]",
+			"iname", pGameServer->Server()->GetItemName(ClientID, Item),
+			"num", &Have, "need", &Need);
+		pGameServer->AddVote_Localization(ClientID, "null", "enruw奖ails：???升级点");
+		pGameServer->AddVote_Localization(ClientID, "passdayquest", "- S贡品S -");
+	}
+	else
+	{
+		pGameServer->AddVote_Localization(ClientID, "null",
+			"收集 {str:iname} [{int:num}/{int:need}]",
+			"iname", pGameServer->Server()->GetItemName(ClientID, Item),
+			"num", &Have, "need", &Need);
+		pGameServer->AddVote_Localization(ClientID, "null",
+			"任务奖励：{int:num}升级点", "num", &Upgr);
+		pGameServer->AddVote_Localization(ClientID, "passdayquest", "- 提交任务");
+	}
+	pGameServer->AddVote("", "null", ClientID);
+	pGameServer->AddVote("", "null", ClientID);
+}
+
+void CQuestManager::ShowDailyKillSection(int ClientID, CGameContext *pGameServer)
+{
+	if (IsPlayerDailyCompleted(ClientID, kDailyKill, pGameServer))
+	{
+		pGameServer->AddVote_Localization(ClientID, "que0", "- 击杀任务已完成");
+		return;
 	}
 
-	// 挑战任务详情
-	if (QuestType == DAILY_CHALLENGE)
+	int Item = GetDailyQuestItem(kDailyKill, kDailyKillDefault);
+	int Need = GetDailyQuestNeed(kDailyKill, kDailyKillDefault);
+	int Upgr = GetDailyQuestUpgr(kDailyKill, kDailyKillDefault);
+	int Have = pGameServer->Server()->GetItemCount(ClientID, KILLQUEST);
+
+	pGameServer->AddVote_Localization(ClientID, "null",
+		"击杀 {str:iname} [{int:num}/{int:need}]",
+		"iname", pGameServer->GetBotName(Item), "num", &Have, "need", &Need);
+	pGameServer->AddVote_Localization(ClientID, "null",
+		"任务奖励：{int:num}升级点", "num", &Upgr);
+	pGameServer->AddVote_Localization(ClientID, "passdayquest", "- 提交任务");
+	pGameServer->AddVote("", "null", ClientID);
+	pGameServer->AddVote("", "null", ClientID);
+}
+
+void CQuestManager::ShowDailyChallengeSection(int ClientID, int SubType,
+	CGameContext *pGameServer)
+{
+	pGameServer->AddVote("", "null", ClientID);
+
+	if (IsPlayerDailyCompleted(ClientID, kDailyChallenge, pGameServer))
 	{
-		pGameServer->AddVote("", "null", ClientID);
-		if (IsPlayerDailyQuestCompleted(ClientID, DAILY_CHALLENGE, pGameServer))
-		{
-			pGameServer->AddVote_Localization(ClientID, "que0", "- 挑战任务已完成");
-		}
-		else
-		{
-			int Have = pGameServer->Server()->GetItemCount(ClientID, Item);
+		pGameServer->AddVote_Localization(ClientID, "que0", "- 挑战任务已完成");
+		return;
+	}
 
-			pGameServer->AddVote_Localization(ClientID, "sque0", "- 农业经济");
-			if (random_prob(0.01f))
-				pGameServer->AddVote_Localization(ClientID, "sque1", "- 祭品");
-			pGameServer->AddVote_Localization(ClientID, "sque2", "- 矿业经济");
-			pGameServer->AddVote_Localization(ClientID, "sque3", "- 击杀挑战");
-			pGameServer->AddVote("", "null", ClientID);
+	int Item = GetDailyQuestItem(kDailyChallenge, SubType);
+	int Need = GetDailyQuestNeed(kDailyChallenge, SubType);
+	int Upgr = GetDailyQuestUpgr(kDailyChallenge, SubType);
+	int Have = (SubType == kDailyChallengeKill)
+		? pGameServer->Server()->GetItemCount(ClientID, CHALLENGEQUEST)
+		: pGameServer->Server()->GetItemCount(ClientID, Item);
 
-			if (SubType == DAILYSUB_CHALLENGE_FARM)
-			{
-				pGameServer->AddVote_Localization(ClientID, "null", "收集 {str:iname} [{int:num}/{int:need}]",
-					"iname", pGameServer->Server()->GetItemName(ClientID, Item), "num", &Have, "need", &Num);
-				pGameServer->AddVote_Localization(ClientID, "null", "任务奖励：{int:num}升级点", "num", &Upgr);
-				pGameServer->AddVote_Localization(ClientID, "passdayquest", "- 提交任务");
-			}
-			else if (SubType == DAILYSUB_CHALLENGE_OFFERING)
-			{
-				pGameServer->AddVote_Localization(ClientID, "null", "VDD献上 {str:iname} [{int:num}/{int:need}]",
-					"iname", pGameServer->Server()->GetItemName(ClientID, Item), "num", &Have, "need", &Num);
-				pGameServer->AddVote_Localization(ClientID, "null", "任务奖励：{int:num}升级点", "num", &Upgr);
-				pGameServer->AddVote_Localization(ClientID, "passdayquest", "- 贡品");
-			}
-			else if (SubType == DAILYSUB_CHALLENGE_MINING)
-			{
-				pGameServer->AddVote_Localization(ClientID, "null", "收集 {str:iname} [{int:num}/{int:need}]",
-					"iname", pGameServer->Server()->GetItemName(ClientID, Item), "num", &Have, "need", &Num);
-				pGameServer->AddVote_Localization(ClientID, "null", "任务奖励：{int:num}升级点", "num", &Upgr);
-				pGameServer->AddVote_Localization(ClientID, "passdayquest", "- 提交任务");
-			}
-			else if (SubType == DAILYSUB_CHALLENGE_KILL)
-			{
-				Have = pGameServer->Server()->GetItemCount(ClientID, CHALLENGEQUEST);
-				pGameServer->AddVote_Localization(ClientID, "null", "击杀 {str:iname} [{int:num}/{int:need}]",
-					"iname", pGameServer->GetBotName(Item), "num", &Have, "need", &Num);
-				pGameServer->AddVote_Localization(ClientID, "null", "任务奖励：{int:num}升级点", "num", &Upgr);
-				pGameServer->AddVote_Localization(ClientID, "passdayquest", "- 提交任务");
-			}
-		}
-		pGameServer->AddVote("", "null", ClientID);
+	// 子类型选单 (隐藏支线: 1% 概率显示 "祭品")
+	pGameServer->AddVote_Localization(ClientID, "sque0", "- 农业经济");
+	if (random_prob(kHiddenChallengeProb))
+		pGameServer->AddVote_Localization(ClientID, "sque1", "- 祭品");
+	pGameServer->AddVote_Localization(ClientID, "sque2", "- 矿业经济");
+	pGameServer->AddVote_Localization(ClientID, "sque3", "- 击杀挑战");
+	pGameServer->AddVote("", "null", ClientID);
+
+	switch (SubType)
+	{
+	case kDailyChallengeKill:
+		pGameServer->AddVote_Localization(ClientID, "null",
+			"击杀 {str:iname} [{int:num}/{int:need}]",
+			"iname", pGameServer->GetBotName(Item), "num", &Have, "need", &Need);
+		break;
+	case kDailyChallengeOffering:
+		pGameServer->AddVote_Localization(ClientID, "null",
+			"VDD献上 {str:iname} [{int:num}/{int:need}]",
+			"iname", pGameServer->Server()->GetItemName(ClientID, Item),
+			"num", &Have, "need", &Need);
+		break;
+	default: // Farm / Mining
+		pGameServer->AddVote_Localization(ClientID, "null",
+			"收集 {str:iname} [{int:num}/{int:need}]",
+			"iname", pGameServer->Server()->GetItemName(ClientID, Item),
+			"num", &Have, "need", &Need);
+		break;
+	}
+
+	if (SubType == kDailyChallengeOffering)
+		pGameServer->AddVote_Localization(ClientID, "passdayquest", "- 贡品");
+	else
+	{
+		pGameServer->AddVote_Localization(ClientID, "null",
+			"任务奖励：{int:num}升级点", "num", &Upgr);
+		pGameServer->AddVote_Localization(ClientID, "passdayquest", "- 提交任务");
+	}
+	pGameServer->AddVote("", "null", ClientID);
+}
+
+// =====================================================================
+// 每日菜单 ─ 入口
+// =====================================================================
+
+void CQuestManager::ShowDailyQuestMenu(int ClientID, CGameContext *pGameServer)
+{
+	int Type = pGameServer->m_apPlayers[ClientID]->m_SelectQuest;
+	int Sub  = pGameServer->m_apPlayers[ClientID]->m_SelectSubQuest;
+
+	ShowDailyHeader(ClientID, pGameServer);
+
+	switch (Type)
+	{
+	case kDailyCollect:   ShowDailyCollectSection(ClientID, Sub, pGameServer);   break;
+	case kDailyKill:      ShowDailyKillSection(ClientID, pGameServer);            break;
+	case kDailyChallenge: ShowDailyChallengeSection(ClientID, Sub, pGameServer);  break;
 	}
 
 	pGameServer->AddBack(ClientID);
-}
-
-// ---- 每日任务: 切换任务类型 ----
-void CQuestManager::HandleSelectQuestType(int ClientID, int QuestType, CGameContext *pGameServer)
-{
-	if (pGameServer->m_apPlayers[ClientID]->m_SelectQuest == QuestType)
-		pGameServer->m_apPlayers[ClientID]->m_SelectQuest = -1;
-	else
-		pGameServer->m_apPlayers[ClientID]->m_SelectQuest = QuestType;
-	pGameServer->ResetVotes(ClientID, DAYQUEST);
-}
-
-// ---- 每日任务: 切换子任务 ----
-void CQuestManager::HandleSelectSubQuest(int ClientID, int SubType, CGameContext *pGameServer)
-{
-	if (pGameServer->m_apPlayers[ClientID]->m_SelectSubQuest == SubType)
-		pGameServer->m_apPlayers[ClientID]->m_SelectSubQuest = -1;
-	else
-		pGameServer->m_apPlayers[ClientID]->m_SelectSubQuest = SubType;
-	pGameServer->ResetVotes(ClientID, DAYQUEST);
-}
-
-// ---- 每日任务: 处理 passdayquest 命令 ----
-void CQuestManager::HandlePassDayQuest(int ClientID, CGameContext *pGameServer)
-{
-	int Quest = pGameServer->m_apPlayers[ClientID]->m_SelectQuest;
-	int Sub = pGameServer->m_apPlayers[ClientID]->m_SelectSubQuest;
-
-	if (Quest < 0 || Quest >= NUM_DAILY_TYPES)
-		return;
-
-	CPlayer *pPlayer = pGameServer->m_apPlayers[ClientID];
-
-	// 检查是否已完成
-	switch (Quest)
-	{
-	case DAILY_COLLECT:
-		if (pPlayer->m_FinishedCollectQuest)
-		{
-			pGameServer->SendChatTarget_Localization(ClientID, CHATCATEGORY_DEFAULT, "你滴任务，完成啦！(大声)", NULL);
-			return;
-		}
-		break;
-	case DAILY_KILL:
-		if (pPlayer->m_FinishedKillQuest)
-		{
-			pGameServer->SendChatTarget_Localization(ClientID, CHATCATEGORY_DEFAULT, "你滴任务，完成啦！(大声)", NULL);
-			return;
-		}
-		break;
-	case DAILY_CHALLENGE:
-		if (pPlayer->m_FinishedChallengeQuest)
-		{
-			pGameServer->SendChatTarget_Localization(ClientID, CHATCATEGORY_DEFAULT, "你滴任务，完成啦！(大声)", NULL);
-			return;
-		}
-		break;
-	default:
-		return;
-	}
-
-	// 检查是否可以完成
-	if (!CanCompleteDailyQuest(ClientID, Quest, Sub, pGameServer))
-	{
-		pGameServer->SendChatTarget_Localization(ClientID, CHATCATEGORY_DEFAULT, "任务还未完成!", NULL);
-		return;
-	}
-
-	CompleteDailyQuest(ClientID, Quest, Sub, pGameServer);
-	pGameServer->ResetVotes(ClientID, DAYQUEST);
 }
