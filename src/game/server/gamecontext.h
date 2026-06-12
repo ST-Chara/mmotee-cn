@@ -28,6 +28,7 @@ typedef unsigned __int64 uint64_t;
 #include "gamecontroller.h"
 #include "gameworld.h"
 #include "player.h"
+#include "quest.h"
 
 
 #define BROADCAST_DURATION_REALTIME (0)
@@ -432,19 +433,17 @@ public:
 	int m_CityStart;
 
 	tm *GetRealTime();
-	void DailyQuestTick();
-	void RefreshDailyQuest(tm *pTime, bool Reset = false);
 
-	struct DailyQuest
-	{
-		int m_LastHour;
-		long long int m_RandomNumber;
-	} m_DailyQuest;
+	// 任务管理器
+	CQuestManager m_QuestManager;
 
-	int GetDailyQuestItem(int Quest, int SubType);
-	int GetDailyQuestNeed(int Quest, int SubType);
-	int GetDailyQuestUpgr(int Quest, int SubType);
-	int GetDailyID();
+	// 以下为旧接口的兼容包装，新代码应使用 m_QuestManager
+	inline void DailyQuestTick() { m_QuestManager.DailyTick(this); }
+	inline void RefreshDailyQuest(tm *pTime, bool Reset = false) { m_QuestManager.RefreshDaily(Reset, this); }
+	inline int GetDailyQuestItem(int Quest, int SubType) { return m_QuestManager.GetDailyQuestItem(Quest, SubType); }
+	inline int GetDailyQuestNeed(int Quest, int SubType) { return m_QuestManager.GetDailyQuestNeed(Quest, SubType); }
+	inline int GetDailyQuestUpgr(int Quest, int SubType) { return m_QuestManager.GetDailyQuestUpgr(Quest, SubType); }
+	inline int GetDailyID() { return m_QuestManager.GetDailyID(); }
 	
 	int m_BossSummonNum;
 
